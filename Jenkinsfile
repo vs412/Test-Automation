@@ -8,14 +8,17 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                script {
+                    // Step 1: Check out the source code from the repository
+                    checkout scm
+                }
             }
         }
 
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Install Python and required dependencies
+                    // Step 2: Install Python and required dependencies
                     sh "pyenv global ${PYTHON_VERSION}"
                     sh 'pip install -r requirements.txt'
                 }
@@ -25,8 +28,8 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Run your Pytest script
-                    sh 'pytest test_database.py'
+                    // Step 3: Run Pytest and generate JUnit XML reports
+                    sh 'pytest --junitxml=test-results.xml test_database.py'
                 }
             }
         }
@@ -34,13 +37,38 @@ pipeline {
 
     post {
         always {
-            // Clean up steps, if needed
+            script {
+                // Step 4: Archive JUnit XML test results for historical tracking
+                junit 'test-results.xml'
+            }
         }
         success {
-            // Actions to perform on successful build
+            script {
+                // Step 5: Archive and publish HTML test report on successful build
+                publishHTML([
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'reports',
+                    reportFiles: 'index.html',
+                    reportName: 'Test Results'
+                ])
+            }
+            echo 'Build succeeded! Additional success actions can be added here.'
         }
         failure {
-            // Actions to perform on build failure
+            script {
+                // Step 6: Archive and publish HTML test report on build failure
+                publishHTML([
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'reports',
+                    reportFiles: 'index.html',
+                    reportName: 'Test Results'
+                ])
+                echo 'Build failed! Additional failure actions can be added here.'
+            }
         }
     }
 }
